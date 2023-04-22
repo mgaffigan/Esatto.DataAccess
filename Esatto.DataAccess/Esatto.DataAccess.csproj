@@ -1,0 +1,26 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>net48;net7.0</TargetFrameworks>
+    <Nullable Condition="'$(TargetFramework)' != 'net48'">annotations</Nullable>
+    <Nullable Condition="'$(TargetFramework)' == 'net48'">annotations</Nullable>
+    <LangVersion>latest</LangVersion>
+    <Title>Esatto Data Access</Title>
+    <Description>Micro-ORM for SQL server</Description>
+    <PackageReadmeFile>.\Readme.md</PackageReadmeFile>
+  </PropertyGroup>
+  <Import Project="..\assets\EsattoCSCommon.targets" />
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="7.0.0" />
+    <PackageReference Include="System.Data.SqlClient" Version="4.8.5" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
+    <Reference Include="System.EnterpriseServices" />
+    <Reference Include="System.Transactions" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\Readme.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
+</Project>
