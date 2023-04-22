@@ -4,8 +4,8 @@
     <Company>In Touch Technologies</Company>
     <Copyright>© 2022 In Touch Technologies.  All rights reserved.</Copyright>
     <NeutralLanguage>en-US</NeutralLanguage>
-    <RepositoryUrl>https://github.com/mgaffigan/Esatto.Win32</RepositoryUrl>
-    <PackageProjectUrl>https://github.com/mgaffigan/Esatto.Win32</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/mgaffigan/Esatto.DataAccess</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/mgaffigan/Esatto.DataAccess</PackageProjectUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <IncludeSymbols>True</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
