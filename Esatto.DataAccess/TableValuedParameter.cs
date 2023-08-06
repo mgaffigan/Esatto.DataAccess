@@ -154,6 +154,10 @@ namespace Esatto.DataAccess
 
     public static class TableValuedParameterExtensions
     {
+        /// <summary>
+        /// Converts basic types (string, int, etc...) to a single column data table, and other types
+        /// to a multi-column data table with one column per prop
+        /// </summary>
         public static DataTable AsDataTable<TValue>(this IEnumerable<TValue> @this)
             => TableValuedParameter.FromEnumerable<TValue>(@this);
 
