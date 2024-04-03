@@ -22,7 +22,9 @@ namespace Esatto.DataAccess
 
         public static DataTable FromEnumerable<T>(IEnumerable<T> list)
         {
-            if (typeof(T).IsPrimitive || typeof(T) == typeof(string))
+            if (typeof(T).IsPrimitive || typeof(T) == typeof(string) || typeof(T) == typeof(Guid)
+                || typeof(T) == typeof(DateTime) || typeof(T) == typeof(DateTimeOffset) 
+                || typeof(T) == typeof(byte[]))
             {
                 return FromSingle(list);
             }
