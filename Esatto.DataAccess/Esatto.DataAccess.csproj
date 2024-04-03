@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>net48;net7.0</TargetFrameworks>
+    <TargetFrameworks>net462;net7.0</TargetFrameworks>
     <Nullable Condition="'$(TargetFramework)' != 'net48'">annotations</Nullable>
     <Nullable Condition="'$(TargetFramework)' == 'net48'">annotations</Nullable>
     <LangVersion>latest</LangVersion>
@@ -11,9 +11,9 @@
   <Import Project="..\assets\EsattoCSCommon.targets" />
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Logging" Version="7.0.0" />
-    <PackageReference Include="System.Data.SqlClient" Version="4.8.5" />
+    <PackageReference Include="System.Data.SqlClient" Version="4.8.6" />
   </ItemGroup>
-  <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
+  <ItemGroup Condition="'$(TargetFramework)' == 'net462'">
     <Reference Include="System.EnterpriseServices" />
     <Reference Include="System.Transactions" />
   </ItemGroup>
