@@ -98,7 +98,9 @@ namespace Esatto.DataAccess
                     //if the exception is anthing other than us exiting, via sqlcommand.cancel
                     //TODO: get code or some manner of identification other than message
                     if (!ex.Message.Contains("Operation cancelled"))
-                        log.LogWarning("Exception while receiving a message", ex);
+                    {
+                        log.LogWarning(ex, "Exception while receiving a message");
+                    }
 
                     if (isStarted)
                     {
