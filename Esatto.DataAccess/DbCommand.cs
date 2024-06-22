@@ -16,7 +16,7 @@ namespace Esatto.DataAccess
         private DbConf conf = null;
         public string CommandText { get; set; }
         public string CommandName { get; private set; }
-        private Dictionary<string, object> paramvals = new Dictionary<string, object>();
+        private Dictionary<string, object> paramvals = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
         [EditorBrowsable(EditorBrowsableState.Never)]
         public IReadOnlyDictionary<string, object> Parameters => paramvals;
         private bool IsCancelled = false;
@@ -428,7 +428,7 @@ namespace Esatto.DataAccess
         public override bool TrySetMember(SetMemberBinder binder, object value)
         {
             var paramName = binder.Name;
-            setParam(value, paramName);
+            paramvals[paramName] = value;
             return true;
         }
 
@@ -448,20 +448,34 @@ namespace Esatto.DataAccess
                 if (paramname.StartsWith("@"))
                     paramname = paramname.Substring(1);
 
-                setParam(value, paramname);
+                paramvals[paramname] = value;
             }
         }
 
-        private void setParam(object? value, string paramName)
+        public Func<T> AddOutputParameter<T>(string paramName)
         {
-            if (paramvals.ContainsKey(paramName))
+            var key = "ZO_" + paramName;
+            paramvals[key] = SqlDbTypeExtensions.ToSqlDbType(typeof(T));
+
+            return () =>
             {
-                paramvals[paramName] = value;
-            }
-            else
+                var result = paramvals[key];
+                if (result == null) return default;
+                return (T)result;
+            };
+        }
+
+        public Func<T> AddInOutParameter<T>(string paramName, T value)
+        {
+            var key = "ZX_" + paramName;
+            paramvals[key] = value;
+
+            return () =>
             {
-                paramvals.Add(paramName, value);
-            }
+                var result = paramvals[key];
+                if (result == null) return default;
+                return (T)result;
+            };
         }
 
         public override bool TryGetMember(GetMemberBinder binder, out object result)
@@ -471,7 +485,7 @@ namespace Esatto.DataAccess
             //init result to null
             result = null;
 
-            //check for the existance of a key
+            //check for the existence of a key
             if (!paramvals.ContainsKey(paramName))
                 return false;
 

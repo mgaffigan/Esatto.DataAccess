@@ -4,78 +4,23 @@ using System.Linq;
 using System.Text;
 using System.Data.SqlClient;
 using System.Reflection;
+using System.Threading.Tasks;
 
 namespace Esatto.DataAccess
 {
-    class ObjectFiller
+    public delegate object? PropertyValueMapper(PropertyInfo pi, object? value);
+
+    public class ObjectFiller<T>
+        where T : new()
     {
-        public static List<T> GetResults<T>(SqlDataReader sdr, string Prefix, Action<T, ResultSet> action, ResultSet res) where T : new()
+        private readonly PropertyInfo[] Mapping;
+        private readonly PropertyValueMapper MapValue;
+
+        public ObjectFiller(SqlDataReader sdr, string? prefix, PropertyValueMapper? valueMapper)
         {
-            var mapping = GetMapping(typeof(T), sdr, Prefix ?? string.Empty);
-            List<T> tls = new List<T>();
+            this.MapValue = valueMapper ?? new((_, value) => value);
 
-            while (sdr.Read())
-            {
-                T obj = FillResult<T>(sdr, action, res, mapping, res.ReaderOptions);
-
-                tls.Add(obj);
-            }
-
-            return tls;
-        }
-
-        public static T GetSingleResult<T>(SqlDataReader sdr, string Prefix, Action<T, ResultSet> action, ResultSet res) where T : new()
-        {
-            var mapping = GetMapping(typeof(T), sdr, Prefix ?? string.Empty);
-
-            T obj = FillResult(sdr, action, res, mapping, res.ReaderOptions);
-            return obj;
-        }
-
-        private static T FillResult<T>(SqlDataReader sdr, Action<T, ResultSet> action, ResultSet res, PropertyInfo[] mapping, DataReaderOptions options) where T : new()
-        {
-            T obj = new T();
-
-            for (int i = 0; i < mapping.Length; i++)
-            {
-                var propertyInfo = mapping[i];
-                try
-                {
-                    if (propertyInfo != null && !sdr.IsDBNull(i))
-                    {
-                        var value = sdr[i];
-
-                        if (propertyInfo.PropertyType == typeof(string)
-                            && value is string
-                            && options.HasFlag(DataReaderOptions.TrimStringValues))
-                        {
-                            value = ((string)value).Trim();
-                        }
-                        else if (propertyInfo.PropertyType == typeof(DateTime?)
-                            && value is DateTime && ((DateTime)value) == new DateTime(1900, 1, 1)
-                            && options.HasFlag(DataReaderOptions.Interpret19000101AsNull))
-                        {
-                            value = null;
-                        }
-
-                        mapping[i].SetValue(obj, value, null);
-                    }
-                    /*else
-                        System.Diagnostics.Debugger.Error("Bindings", "Invalid mapping for column " + sdr.GetName(i) + " on object " + typeof(T).Name + "\n");*/
-                }
-                catch (Exception ex)
-                {
-                    throw new InvalidOperationException(string.Format("Exception while mapping column '{0}'", mapping[i].Name), ex);
-                }
-            }
-
-            if (action != null)
-                action(obj, res);
-            return obj;
-        }
-
-        private static PropertyInfo[] GetMapping(Type T, SqlDataReader sdr, string prefix)
-        {
+            var T = typeof(T);
             PropertyInfo[] props = T.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
             PropertyInfo[] sprops = T.GetProperties(BindingFlags.Static | BindingFlags.Public);
             PropertyInfo[] mapping = new PropertyInfo[sdr.FieldCount];
@@ -121,7 +66,31 @@ namespace Esatto.DataAccess
                 }
             }
 
-            return mapping;
+            this.Mapping = mapping;
+        }
+
+        public T GetPartialObject(SqlDataReader sdr)
+        {
+            var obj = new T();
+
+            for (int i = 0; i < Mapping.Length; i++)
+            {
+                var propertyInfo = Mapping[i];
+                try
+                {
+                    if (propertyInfo == null || sdr.IsDBNull(i)) continue;
+
+                    var value = sdr[i];
+                    value = MapValue(propertyInfo, value);
+                    Mapping[i].SetValue(obj, value, null);
+                }
+                catch (Exception ex)
+                {
+                    throw new InvalidOperationException(string.Format("Exception while mapping column '{0}'", Mapping[i].Name), ex);
+                }
+            }
+
+            return obj;
         }
     }
 }
