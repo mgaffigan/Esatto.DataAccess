@@ -9,6 +9,7 @@ using System.EnterpriseServices;
 using System.Reflection;
 using System.Diagnostics.Contracts;
 using Microsoft.Extensions.Logging;
+using System.Threading.Tasks;
 
 namespace Esatto.DataAccess
 {
@@ -39,15 +40,26 @@ namespace Esatto.DataAccess
 
         public SqlConnection GetConnection()
         {
-            SqlConnection con = new SqlConnection(GetEffectiveConnectionString());
+            var con = new SqlConnection(GetEffectiveConnectionString());
             con.Open();
+            OnConnectionOpened(con);
+            return con;
+        }
 
+        public async Task<SqlConnection> GetConnectionAsync()
+        {
+            var con = new SqlConnection(GetEffectiveConnectionString());
+            await con.OpenAsync().ConfigureAwait(false);
+            OnConnectionOpened(con);
+            return con;
+        }
+
+        private void OnConnectionOpened(SqlConnection con)
+        {
 #if NETFRAMEWORK
             enlistDTC(con);
 #endif
             resetIsolationLevel(con);
-
-            return con;
         }
 
         private string GetEffectiveConnectionString()
@@ -125,6 +137,14 @@ namespace Esatto.DataAccess
             return sp.ExecuteReader();
         }
 
+        public async Task<ResultSet> ExecuteStoredProcedureReaderAsync(string spName, object paramObject = null)
+        {
+            var sp = new StoredProcedure(this, spName);
+            sp.ApplyParamsObject(paramObject);
+
+            return await sp.ExecuteReaderAsync().ConfigureAwait(false);
+        }
+
         public StoredProcedure ExecuteStoredProcedure(string spName, object paramObject = null)
         {
             var sp = new StoredProcedure(this, spName);
@@ -134,25 +154,13 @@ namespace Esatto.DataAccess
             return sp;
         }
 
-        private void CopyOutParamsToParamsObject(StoredProcedure sp, object paramObject)
+        public async Task<StoredProcedure> ExecuteStoredProcedureAsync(string spName, object paramObject = null)
         {
-            if (paramObject != null)
-            {
-                var paramList = paramObject.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.SetProperty);
-                foreach (var p in paramList)
-                {
-                    if (!p.Name.StartsWith("ZO_", StringComparison.InvariantCultureIgnoreCase)
-                        && !p.Name.StartsWith("ZX_", StringComparison.InvariantCultureIgnoreCase))
-                    {
-                        continue;
-                    }
+            var sp = new StoredProcedure(this, spName);
+            sp.ApplyParamsObject(paramObject);
 
-                    if (sp.Parameters.TryGetValue(p.Name, out var value))
-                    {
-                        p.SetValue(paramObject, value);
-                    }
-                }
-            }
+            await sp.ExecuteAsync().ConfigureAwait(false);
+            return sp;
         }
     }
 }

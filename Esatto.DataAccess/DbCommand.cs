@@ -4,11 +4,10 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Data.SqlClient;
-using System.Diagnostics;
 using System.Dynamic;
 using System.Linq;
 using System.Reflection;
-using System.Text;
+using System.Threading.Tasks;
 
 namespace Esatto.DataAccess
 {
@@ -121,10 +120,8 @@ namespace Esatto.DataAccess
         public ResultSet ExecuteReader()
         {
             SqlDataReader sdr = null;
-            SqlCommand sqc = null;
             SqlConnection con = null;
-            string fullCommandText = null;
-            var stpRunning = Stopwatch.StartNew();
+            string? fullCommandText = null;
 
             try
             {
@@ -132,53 +129,54 @@ namespace Esatto.DataAccess
 
                 hookupProgressEvent(con);
 
-                sqc = createDynamicCommand(con);
-
-                //add return var
-                SqlParameter pReturn = new SqlParameter()
-                {
-                    Direction = System.Data.ParameterDirection.ReturnValue
-                };
-                sqc.Parameters.Add(pReturn);
+                var sqc = createDynamicCommand(con);
 
                 //exec
-                if (sqc.CommandType != CommandType.StoredProcedure)
-                {
-                    fullCommandText = SqlCommandDumper.GetCommandText(sqc);
-                }
+                fullCommandText = sqc.GetFullCommandText();
 
-                logPreExec(sqc, fullCommandText ?? sqc.CommandText);
+                logPreExec(sqc, fullCommandText);
                 sdr = sqc.ExecuteReader();
-                //Telemetry.Client.TrackDependency("SQL", conf.Schema, CommandName ?? sqc.CommandText, fullCommandText, stpRunning.Elapsed, true);
 
                 return new ResultSet(sdr, con, sqc, this, conf.ReaderOptions);
             }
             catch (Exception ex)
             {
-                if (sdr != null && !sdr.IsClosed)
-                    sdr.Close();
-                if (con != null)
-                    con.Close();
+                if (sdr != null && !sdr.IsClosed) sdr.Close();
+                con?.Close();
 
-                var sEx = ex as SqlException;
-                // there is no good way to identify this error.  See 
-                //   https://referencesource.microsoft.com/#System.Data/System/Data/SqlClient/TdsParser.cs,2332
-                //   https://stackoverflow.com/questions/10226314/what-is-the-best-way-to-catch-operation-cancelled-by-user-exception
-                if (sEx != null && sEx.Number == 0 && sEx.State == 0 && sEx.Class == 11 && IsCancelled)
-                {
-                    // no-op, no need to log since it is a user initated exception
-                    throw new OperationCanceledException(ex.Message, ex);
-                }
-                if (sEx != null && sEx.Number == 50000)
-                {
-                    // no-op, no need to log since it is a user thrown exception
-                }
-                else
-                {
-                    conf.Logger.LogWarning(ex, "Exception occurred while executing command against schema '{1}':\r\n{0}", fullCommandText ?? CommandText, conf.Schema);
-                    //Telemetry.Client.TrackDependency("SQL", conf.Schema, CommandName ?? sqc?.CommandText, fullCommandText, stpRunning.Elapsed, false);
-                }
+                TranslateException(fullCommandText, ex);
+                throw;
+            }
+        }
 
+        public async Task<ResultSet> ExecuteReaderAsync()
+        {
+            SqlDataReader sdr = null;
+            SqlConnection con = null;
+            string fullCommandText = null;
+
+            try
+            {
+                con = await conf.GetConnectionAsync().ConfigureAwait(false);
+
+                hookupProgressEvent(con);
+
+                var sqc = createDynamicCommand(con);
+
+                //exec
+                fullCommandText = sqc.GetFullCommandText();
+
+                logPreExec(sqc, fullCommandText);
+                sdr = await sqc.ExecuteReaderAsync().ConfigureAwait(false);
+
+                return new ResultSet(sdr, con, sqc, this, conf.ReaderOptions);
+            }
+            catch (Exception ex)
+            {
+                if (sdr != null && !sdr.IsClosed) sdr.Close();
+                con?.Close();
+
+                TranslateException(fullCommandText, ex);
                 throw;
             }
         }
@@ -241,10 +239,7 @@ namespace Esatto.DataAccess
 
         public int Execute()
         {
-            string commandText = null;
             string fullCommandText = null;
-            var stpRunning = Stopwatch.StartNew();
-
             try
             {
                 using (var con = conf.GetConnection())
@@ -254,22 +249,13 @@ namespace Esatto.DataAccess
                     hookupProgressEvent(con);
 
                     //add return var
-                    SqlParameter pReturn = new SqlParameter()
-                    {
-                        Direction = System.Data.ParameterDirection.ReturnValue
-                    };
-                    sqc.Parameters.Add(pReturn);
+                    var pReturn = sqc.AddReturnParameter();
 
                     //exec
-                    if (sqc.CommandType != CommandType.StoredProcedure)
-                    {
-                        fullCommandText = SqlCommandDumper.GetCommandText(sqc);
-                    }
-                    commandText = sqc.CommandText;
+                    fullCommandText = sqc.GetFullCommandText();
 
-                    logPreExec(sqc, fullCommandText ?? sqc.CommandText);
+                    logPreExec(sqc, fullCommandText);
                     sqc.ExecuteNonQuery();
-                    //Telemetry.Client.TrackDependency("SQL", conf.Schema, CommandName ?? sqc.CommandText, fullCommandText, stpRunning.Elapsed, true);
 
                     //update any output vars
                     LoadParameters(sqc);
@@ -285,26 +271,72 @@ namespace Esatto.DataAccess
             }
             catch (Exception ex)
             {
-                var sEx = ex as SqlException;
-                // there is no good way to identify this error.  See 
-                //   https://referencesource.microsoft.com/#System.Data/System/Data/SqlClient/TdsParser.cs,2332
-                //   https://stackoverflow.com/questions/10226314/what-is-the-best-way-to-catch-operation-cancelled-by-user-exception
-                if (sEx != null && sEx.Number == 0 && sEx.State == 0 && sEx.Class == 11 && IsCancelled)
-                {
-                    // no-op, no need to log since it is a user initated exception
-                    throw new OperationCanceledException(ex.Message, ex);
-                }
-                if (sEx != null && sEx.Number == 50000)
-                {
-                    // no-op, no need to log since it is a user thrown exception
-                }
-                else
-                {
-                    conf.Logger.LogWarning(ex, "Exception occurred while executing command against schema '{1}':\r\n{0}", fullCommandText ?? CommandText, conf.Schema);
-                    //Telemetry.Client.TrackDependency("SQL", conf.Schema, CommandName ?? commandText, fullCommandText, stpRunning.Elapsed, false);
-                }
-
+                TranslateException(fullCommandText, ex);
                 throw;
+            }
+        }
+
+        public async Task<int> ExecuteAsync()
+        {
+            string fullCommandText = null;
+            try
+            {
+                using (var con = conf.GetConnection())
+                using (var sqc = createDynamicCommand(con))
+                {
+                    // hook progress if need be
+                    hookupProgressEvent(con);
+
+                    //add return var
+                    var pReturn = sqc.AddReturnParameter();
+
+                    //exec
+                    fullCommandText = sqc.GetFullCommandText();
+
+                    logPreExec(sqc, fullCommandText);
+                    await sqc.ExecuteNonQueryAsync().ConfigureAwait(false);
+
+                    //update any output vars
+                    LoadParameters(sqc);
+
+                    //return result
+                    int val = (int)pReturn.Value;
+
+                    //clean up
+#if NET
+                    await con.CloseAsync().ConfigureAwait(false);
+#else
+                    con.Close();
+#endif
+
+                    return val;
+                }
+            }
+            catch (Exception ex)
+            {
+                TranslateException(fullCommandText, ex);
+                throw;
+            }
+        }
+
+        private void TranslateException(string fullCommandText, Exception ex)
+        {
+            var sEx = ex as SqlException;
+            // there is no good way to identify this error.  See 
+            //   https://referencesource.microsoft.com/#System.Data/System/Data/SqlClient/TdsParser.cs,2332
+            //   https://stackoverflow.com/questions/10226314/what-is-the-best-way-to-catch-operation-cancelled-by-user-exception
+            if (sEx != null && sEx.Number == 0 && sEx.State == 0 && sEx.Class == 11 && IsCancelled)
+            {
+                // no-op, no need to log since it is a user initated exception
+                throw new OperationCanceledException(ex.Message, ex);
+            }
+            if (sEx != null && sEx.Number == 50000)
+            {
+                // no-op, no need to log since it is a user thrown exception
+            }
+            else
+            {
+                conf.Logger.LogWarning(ex, "Exception occurred while executing command against schema '{1}':\r\n{0}", fullCommandText ?? CommandText, conf.Schema);
             }
         }
 
