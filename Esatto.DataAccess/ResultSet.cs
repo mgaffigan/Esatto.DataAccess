@@ -135,7 +135,9 @@ namespace Esatto.DataAccess
             }
         }
 
-        public IEnumerable<T> ForEachRow<T>(Func<ResultSet, T> action)
+        [Obsolete("Use AsIEnumerable<T> to produce an IEnumerable or return void from action")]
+        public IEnumerable<T> ForEachRow<T>(Func<ResultSet, T> action) => AsIEnumerable(action);
+        public IEnumerable<T> AsIEnumerable<T>(Func<ResultSet, T> action)
         {
             while (sdr.Read())
             {
@@ -143,7 +145,9 @@ namespace Esatto.DataAccess
             }
         }
 
-        public async IAsyncEnumerable<T> ForEachRowAsync<T>(Func<ResultSet, T> action)
+        [Obsolete("Use AsIAsyncEnumerable<T> to produce an IAsyncEnumerable or return void from action")]
+        public IAsyncEnumerable<T> ForEachRowAsync<T>(Func<ResultSet, T> action) => AsIAsyncEnumerable(action);
+        public async IAsyncEnumerable<T> AsIAsyncEnumerable<T>(Func<ResultSet, T> action)
         {
             while (await sdr.ReadAsync().ConfigureAwait(false))
             {
