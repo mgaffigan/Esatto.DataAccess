@@ -74,7 +74,7 @@ namespace Esatto.DataAccess
                 info.DBSource = e.Source;
                 Progress?.Invoke(this, new ProgressReportEventArgs(info.Progress, info.Total, info.Status));
             }
-            else if (e.Errors.Cast<SqlError>().Any(c => c.Class >= 16))
+            else if (e.Errors.Cast<SqlError>().Any(c => c.Class >= 11))
             {
                 // critical error, throw back to main thread
                 UserException = e.GetException();
@@ -261,7 +261,7 @@ namespace Esatto.DataAccess
                     LoadParameters(sqc);
 
                     //return result
-                    int val = (int)pReturn.Value;
+                    int val = (int)(pReturn.Value ?? throw new InvalidOperationException("Return parameter was null"));
 
                     //clean up
                     con.Close();
