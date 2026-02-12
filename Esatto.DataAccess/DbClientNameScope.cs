@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -17,6 +19,20 @@ namespace Esatto.DataAccess
         }
 
         public static string StaticName { get; set; }
+
+        static DbClientNameScope()
+        {
+            try 
+            {
+                StaticName = Assembly.GetEntryAssembly()?.GetName().Name
+                    ?? AppDomain.CurrentDomain.FriendlyName
+                    ?? Process.GetCurrentProcess().ProcessName;
+            }
+            catch
+            {
+                StaticName = "Unknown";
+            }
+        }
 
         private DbClientNameScope(string name)
         {
