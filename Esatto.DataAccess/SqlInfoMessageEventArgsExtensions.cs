@@ -1,6 +1,4 @@
-﻿using System;
-using System.Data.SqlClient;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Reflection;
 
 namespace Esatto.DataAccess

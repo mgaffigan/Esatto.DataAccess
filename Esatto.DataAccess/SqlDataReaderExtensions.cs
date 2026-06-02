@@ -1,7 +1,4 @@
-﻿using System.Xml.Linq;
-using System.Xml;
-using System;
-using System.Data.SqlClient;
+﻿using System.Xml;
 
 namespace Esatto.DataAccess;
 

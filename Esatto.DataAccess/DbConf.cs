@@ -1,15 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Data.SqlClient;
-#if NETFRAMEWORK
+﻿#if NETFRAMEWORK
 using System.EnterpriseServices;
 #endif
-using System.Reflection;
 using System.Diagnostics.Contracts;
 using Microsoft.Extensions.Logging;
-using System.Threading.Tasks;
 
 namespace Esatto.DataAccess
 {

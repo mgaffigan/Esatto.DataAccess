@@ -1,13 +1,8 @@
 ﻿using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
-using System.Data.SqlClient;
 using System.Dynamic;
-using System.Linq;
 using System.Reflection;
-using System.Threading.Tasks;
 
 namespace Esatto.DataAccess
 {

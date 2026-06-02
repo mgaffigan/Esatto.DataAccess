@@ -1,11 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using Esatto.DataAccess;
-using System.Threading;
-using System.Transactions;
-using System.Diagnostics;
+﻿using System.Transactions;
 using Microsoft.Extensions.Logging;
 
 namespace Esatto.DataAccess
