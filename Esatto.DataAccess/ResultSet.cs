@@ -262,7 +262,7 @@ namespace Esatto.DataAccess
         {
             if (sdr != null && !sdr.IsClosed)
             {
-                sdr.Close();
+                CloseOpenReader();
                 dbcommand?.LoadParameters(sqc);
             }
         }
@@ -271,11 +271,30 @@ namespace Esatto.DataAccess
 
         public void End()
         {
-            if (sdr != null && !sdr.IsClosed)
+            try
+            {
+                if (sdr != null && !sdr.IsClosed)
+                {
+                    CloseOpenReader();
+                }
+            }
+            finally
+            {
+                con?.Close();
+            }
+        }
+
+        // Close discards errors raised after the last result set read; advancing past them throws instead
+        private void CloseOpenReader()
+        {
+            try
+            {
+                while (sdr.NextResult()) { }
+            }
+            finally
             {
                 sdr.Close();
             }
-            con?.Close();
         }
 
         public int GetInt(string name) => sdr.GetInt(name);
